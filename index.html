@@ -264,7 +264,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // -----------------------------------------------------------
 });
+// ----------------------------------------------------------------------
+// [핵심 함수] 생년월일 드롭다운 채우기 (사장님 코드)
+// ----------------------------------------------------------------------
+function initBirthSelectors() {
+    console.log("✅ 2. initBirthSelectors 함수 실행됨"); // ✨ 이 줄 추가
+    const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
+    
+    // HTML 요소가 존재하는지 다시 한번 확인합니다. (안전 장치)
+    if (!y || !m || !d) {
+        console.error("드롭다운 ID(birthYear, birthMonth, birthDay)를 HTML에서 찾을 수 없습니다.");
+        return;
+    }
 
+// ... (중간 생략) ...
+
+// ----------------------------------------------------------------------
+// [호출 함수] 페이지 로드 시 드롭다운 채우기 및 버튼 이벤트 등록
+// ----------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("✅ 1. DOMContentLoaded 이벤트 발생 및 스크립트 실행 시작"); // ✨ 이 줄 추가
+    
+    // 1. 드롭다운 목록 채우기 (가장 먼저 실행)
+    initBirthSelectors();
 </script>
 </body>
 </html>
