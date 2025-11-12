@@ -148,9 +148,9 @@
 </div>
 
 <script>
-// ----------------------------------------------------------------------
+// ======================================================================
 // [도움 함수] 입력창에서 데이터 가져오기
-// ----------------------------------------------------------------------
+// ======================================================================
 function getBirthInfo() { 
     return { 
         year: document.getElementById('birthYear').value, 
@@ -161,14 +161,20 @@ function getBirthInfo() {
     };
 }
 
+function getQueryInfo() {
+    return {
+        year: document.getElementById('queryYear').value,
+        month: document.getElementById('queryMonth').value,
+        topN: document.getElementById('topN').value
+    };
+}
 
 // ----------------------------------------------------------------------
-// [핵심 함수] 생년월일 드롭다운 채우기 (사장님 코드)
+// [핵심 함수] 생년월일 드롭다운 채우기 (birthYear, birthMonth, birthDay)
 // ----------------------------------------------------------------------
 function initBirthSelectors() {
     const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
     
-    // HTML 요소가 존재하는지 다시 한번 확인합니다. (안전 장치)
     if (!y || !m || !d) {
         console.error("드롭다운 ID(birthYear, birthMonth, birthDay)를 HTML에서 찾을 수 없습니다.");
         return;
@@ -177,116 +183,156 @@ function initBirthSelectors() {
     const now=new Date();
     y.innerHTML = ''; m.innerHTML = ''; d.innerHTML = ''; 
 
+    // 연도 옵션 채우기 (현재-80년부터 현재 연도까지)
     for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
         const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
     }
     y.value = now.getFullYear() - 30; // 기본값 설정 
     
+    // 월/일 옵션 채우기
     for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
     for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
 }
 
+// ----------------------------------------------------------------------
+// [핵심 함수] 조회 연/월 드롭다운 채우기 (queryYear, queryMonth)
+// ----------------------------------------------------------------------
+function initQuerySelectors() {
+    const qY=document.getElementById('queryYear'), qM=document.getElementById('queryMonth');
+    if (!qY || !qM) return; 
+
+    const now=new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    qY.innerHTML = ''; qM.innerHTML = '';
+
+    // 조회 연도: 현재 연도와 다음 연도
+    for(let yy=currentYear; yy<=currentYear+1; yy++){ 
+        const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; qY.appendChild(o); 
+    }
+    qY.value = currentYear;
+    
+    // 조회 월: 1월부터 12월까지
+    for(let mm=1; mm<=12; mm++){ 
+        const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; qM.appendChild(o); 
+    }
+    qM.value = currentMonth; // 현재 월 기본 설정
+}
+
 
 // ----------------------------------------------------------------------
-// [호출 함수] 페이지 로드 시 드롭다운 채우기 및 버튼 이벤트 등록
+// [초기화] 페이지 로드 시 드롭다운 채우기 (IIFE 패턴으로 즉시 실행 보장)
 // ----------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. 드롭다운 목록 채우기 (가장 먼저 실행)
-    initBirthSelectors(); 
+(function initSelectors() {
+    initBirthSelectors(); // 사용자 생년월일 드롭다운 채우기
+    initQuerySelectors(); // 조회 연/월 드롭다운 채우기
     
-    // 2. 기본값 설정 
+    // 생년월일 초기값 설정 (오늘 날짜)
     const now = new Date();
     document.getElementById('birthMonth').value = now.getMonth() + 1;
     document.getElementById('birthDay').value = now.getDate();
 
-    // 3. 버튼 이벤트 리스너 등록 (서버 호출 로직)
-    // -----------------------------------------------------------
-    
-    // 1. 오늘의 운세 (무료) - /api/today 호출
-    document.getElementById('todayBtn').addEventListener('click', async () => {
-        const birthInfo = getBirthInfo();
-        const resultsArea = document.getElementById('results');
-        resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">계산 중...</div>';
-        
-        const response = await fetch('/api/today', {
-            method: 'POST', body: JSON.stringify(birthInfo),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const result = await response.json();
-        resultsArea.innerHTML = result.htmlContent; 
-    });
+    // 단일 날짜 확인 입력창 기본값 설정 (오늘)
+    const queryDate = document.getElementById('queryDate');
+    const todayISO = now.toISOString().split('T')[0];
+    if (queryDate) queryDate.value = todayISO;
+
+    // 초기 만세력 표시 (선택사항)
+    // displayPillars(); 
+})();
 
 
-    // 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
-    document.getElementById('monthTopBtn').addEventListener('click', async () => {
-        const birthInfo = getBirthInfo();
-        const resultsArea = document.getElementById('results');
-        const email = document.getElementById('emailInput').value;
-        const token = localStorage.getItem('saju_user_token'); 
+// ----------------------------------------------------------------------
+// [이벤트 등록] DOMContentLoaded 대신 window.onload를 사용하거나 
+// IIFE 패턴으로 요소가 준비되었을 때 즉시 이벤트 등록을 시작합니다.
+// ----------------------------------------------------------------------
 
-        if (!email) {
-            alert("🔒 유료 서비스 이용을 위해 이메일 주소를 입력해 주세요.");
-            return;
-        }
-        resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">인증 확인 및 계산 중...</div>';
-
-        let requestBody = { ...birthInfo, email: email };
-        
-        if (token) {
-            requestBody.token = token;
-        } else {
-            const authCode = prompt("🔒 유료 결제 시 받은 인증 코드를 입력하세요:");
-            if (!authCode) { resultsArea.innerHTML = ''; return; } 
-            requestBody.code = authCode;
-        }
-
-        const response = await fetch('/api/month', {
-            method: 'POST', body: JSON.stringify(requestBody),
-            headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (response.status === 401) {
-            localStorage.removeItem('saju_user_token'); 
-            alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다.");
-            resultsArea.innerHTML = ''; 
-            return;
-        }
-
-        const result = await response.json();
-
-        if (result.access_token) {
-            localStorage.setItem('saju_user_token', result.access_token);
-        }
-        
-        resultsArea.innerHTML = result.htmlContent; 
-    });
-
-    // -----------------------------------------------------------
+// 1. 오늘의 운세 (무료) - /api/today 호출
+document.getElementById('todayBtn').addEventListener('click', async () => {
+    // 서버 호출 로직 (생략되었던 부분)
+    alert("오늘 운세 로직 (서버 통신)이 실행될 위치입니다.");
 });
-// ----------------------------------------------------------------------
-// [핵심 함수] 생년월일 드롭다운 채우기 (사장님 코드)
-// ----------------------------------------------------------------------
-function initBirthSelectors() {
-    console.log("✅ 2. initBirthSelectors 함수 실행됨"); // ✨ 이 줄 추가
-    const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
+
+// 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
+document.getElementById('monthTopBtn').addEventListener('click', async () => {
+    const birthInfo = getBirthInfo();
+    const queryInfo = getQueryInfo();
+    const resultsArea = document.getElementById('results');
+    const email = document.getElementById('emailInput').value;
+    const token = localStorage.getItem('saju_user_token'); 
+
+    if (!email) {
+        alert("🔒 유료 서비스 이용을 위해 이메일 주소를 입력해 주세요.");
+        return;
+    }
+    resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">인증 확인 및 계산 중...</div>';
+
+    let requestBody = { ...birthInfo, ...queryInfo, email: email };
     
-    // HTML 요소가 존재하는지 다시 한번 확인합니다. (안전 장치)
-    if (!y || !m || !d) {
-        console.error("드롭다운 ID(birthYear, birthMonth, birthDay)를 HTML에서 찾을 수 없습니다.");
+    if (token) {
+        requestBody.token = token;
+    } else {
+        const authCode = prompt("🔒 유료 결제 시 받은 인증 코드를 입력하세요:");
+        if (!authCode) { resultsArea.innerHTML = ''; return; } 
+        requestBody.code = authCode;
+    }
+
+    const response = await fetch('/api/month', {
+        method: 'POST', body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem('saju_user_token'); 
+        alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다. 다시 시도해 주세요.");
+        resultsArea.innerHTML = ''; 
         return;
     }
 
-// ... (중간 생략) ...
+    const result = await response.json();
 
-// ----------------------------------------------------------------------
-// [호출 함수] 페이지 로드 시 드롭다운 채우기 및 버튼 이벤트 등록
-// ----------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', function() {
-    console.log("✅ 1. DOMContentLoaded 이벤트 발생 및 스크립트 실행 시작"); // ✨ 이 줄 추가
+    if (result.access_token) {
+        localStorage.setItem('saju_user_token', result.access_token);
+    }
     
-    // 1. 드롭다운 목록 채우기 (가장 먼저 실행)
-    initBirthSelectors();
+    if(response.status === 200) resultsArea.innerHTML = result.htmlContent;
+    else resultsArea.innerHTML = '유료 서비스 오류 발생.';
+});
+
+// 3. 단일 날짜 확인 버튼
+document.getElementById('checkDateBtn').addEventListener('click', async () => {
+    // 서버 호출 로직 (생략되었던 부분)
+    alert("단일 날짜 운세 로직 (서버 통신)이 실행될 위치입니다.");
+});
+
+// 4. '오늘' 버튼 클릭 시
+document.getElementById('todayBtn').addEventListener('click', () => {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('queryDate').value = today;
+    // alert("오늘 버튼이 클릭되었습니다.");
+});
+
+// 5. 카테고리 필터 (기존 로직 유지)
+document.querySelectorAll('.cat-buttons button').forEach(btn=>{ 
+    btn.addEventListener('click', ()=>{ 
+        document.querySelectorAll('.cat-buttons button').forEach(b=>b.classList.remove('active')); 
+        btn.classList.add('active'); 
+        const cat=btn.dataset.cat; 
+        const resultsArea=document.getElementById('results'); 
+        
+        // 결과 필터링 로직 (결과 데이터가 있을 경우 동작)
+        Array.from(resultsArea.children).forEach(child=>{ 
+            if(cat==='all'){ 
+                child.style.display='block'; 
+                return; 
+            } 
+            if(child.dataset && child.dataset.cat){ 
+                child.style.display=(child.dataset.cat===cat ? 'block' : 'none'); 
+            }
+        });
+    });
+});
 </script>
 </body>
 </html>
