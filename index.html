@@ -147,9 +147,8 @@
 
 </div>
 
+//=====================================================
 <script>
-// index.html의 <script> 태그 안의 최종 내용
-
 // ----------------------------------------------------------------------
 // [도움 함수] 입력창에서 데이터 가져오기
 // ----------------------------------------------------------------------
@@ -165,29 +164,27 @@ function getBirthInfo() {
 
 
 // ----------------------------------------------------------------------
-// [핵심 함수] 생년월일 드롭다운 채우기
+// [핵심 함수] 생년월일 드롭다운 채우기 (사장님 코드)
 // ----------------------------------------------------------------------
 function initBirthSelectors() {
-    // 사장님이 제공해주신 정확한 드롭다운 생성 로직
     const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
-    const now=new Date();
     
-    // 이전에 생성된 옵션이 있다면 제거 (중복 방지)
+    // HTML 요소가 존재하는지 다시 한번 확인합니다. (안전 장치)
+    if (!y || !m || !d) {
+        console.error("드롭다운 ID(birthYear, birthMonth, birthDay)를 HTML에서 찾을 수 없습니다.");
+        return;
+    }
+
+    const now=new Date();
     y.innerHTML = ''; m.innerHTML = ''; d.innerHTML = ''; 
 
     for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
         const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
     }
-    y.value = now.getFullYear() - 30; // 기본값 설정 
+    y.value = now.getFullYear() - 30; // 기본값 설정 
     
     for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
     for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
-    
-    // 사주 기둥 표시 함수는 서버로 옮겼으므로, displayPillars 함수는 여기서 삭제합니다.
-    // [y, m, d, document.getElementById('birthhour'), document.getElementById('gender')].forEach(el => {
-    //   el.addEventListener('change', displayPillars); // 이 줄 삭제
-    // });
-    // setTimeout(displayPillars, 100); // 이 줄 삭제
 }
 
 
@@ -195,103 +192,81 @@ function initBirthSelectors() {
 // [호출 함수] 페이지 로드 시 드롭다운 채우기 및 버튼 이벤트 등록
 // ----------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', function() {
-    // 1. 드롭다운 목록 채우기
+    // 1. 드롭다운 목록 채우기 (가장 먼저 실행)
     initBirthSelectors(); 
     
-    // 2. 기본값 설정 (필요하다면)
+    // 2. 기본값 설정 
     const now = new Date();
     document.getElementById('birthMonth').value = now.getMonth() + 1;
     document.getElementById('birthDay').value = now.getDate();
 
     // 3. 버튼 이벤트 리스너 등록 (서버 호출 로직)
     // -----------------------------------------------------------
-    // (여기에 Step 1-6에서 사용했던 todayBtn, monthTopBtn 이벤트 리스너 코드 전체를 다시 붙여넣으세요)
+    
+    // 1. 오늘의 운세 (무료) - /api/today 호출
+    document.getElementById('todayBtn').addEventListener('click', async () => {
+        const birthInfo = getBirthInfo();
+        const resultsArea = document.getElementById('results');
+        resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">계산 중...</div>';
+        
+        const response = await fetch('/api/today', {
+            method: 'POST', body: JSON.stringify(birthInfo),
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const result = await response.json();
+        resultsArea.innerHTML = result.htmlContent; 
+    });
+
+
+    // 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
+    document.getElementById('monthTopBtn').addEventListener('click', async () => {
+        const birthInfo = getBirthInfo();
+        const resultsArea = document.getElementById('results');
+        const email = document.getElementById('emailInput').value;
+        const token = localStorage.getItem('saju_user_token'); 
+
+        if (!email) {
+            alert("🔒 유료 서비스 이용을 위해 이메일 주소를 입력해 주세요.");
+            return;
+        }
+        resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">인증 확인 및 계산 중...</div>';
+
+        let requestBody = { ...birthInfo, email: email };
+        
+        if (token) {
+            requestBody.token = token;
+        } else {
+            const authCode = prompt("🔒 유료 결제 시 받은 인증 코드를 입력하세요:");
+            if (!authCode) { resultsArea.innerHTML = ''; return; } 
+            requestBody.code = authCode;
+        }
+
+        const response = await fetch('/api/month', {
+            method: 'POST', body: JSON.stringify(requestBody),
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.status === 401) {
+            localStorage.removeItem('saju_user_token'); 
+            alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다.");
+            resultsArea.innerHTML = ''; 
+            return;
+        }
+
+        const result = await response.json();
+
+        if (result.access_token) {
+            localStorage.setItem('saju_user_token', result.access_token);
+        }
+        
+        resultsArea.innerHTML = result.htmlContent; 
+    });
+
     // -----------------------------------------------------------
 });
 
-// index.html의 <script> 태그 안 (기존 이벤트 리스너를 모두 삭제하고 이 코드로 대체)
-
-// ----------------------------------------------------------------------
-// [도움 함수] 입력창에서 데이터 가져오기
-// ----------------------------------------------------------------------
-function getBirthInfo() {
-    return { 
-        year: document.getElementById('birthYear').value, 
-        month: document.getElementById('birthMonth').value, 
-        day: document.getElementById('birthDay').value,
-        hour: document.getElementById('birthhour').value,
-        gender: document.getElementById('gender').value 
-    };
-}
-
-// ----------------------------------------------------------------------
-// 1. 오늘의 운세 (무료) - /api/today 호출
-// ----------------------------------------------------------------------
-document.getElementById('todayBtn').addEventListener('click', async () => {
-    const birthInfo = getBirthInfo();
-    const resultsArea = document.getElementById('results');
-    resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">계산 중...</div>';
-    
-    // 무료 API 호출
-    const response = await fetch('/api/today', {
-        method: 'POST', body: JSON.stringify(birthInfo),
-        headers: { 'Content-Type': 'application/json' }
-    });
-    
-    const result = await response.json();
-    resultsArea.innerHTML = result.htmlContent; // 서버가 보내준 결과 표시
-});
-
-
-// ----------------------------------------------------------------------
-// 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
-// ----------------------------------------------------------------------
-document.getElementById('monthTopBtn').addEventListener('click', async () => {
-    const birthInfo = getBirthInfo();
-    const resultsArea = document.getElementById('results');
-    const email = document.getElementById('emailInput').value;
-    const token = localStorage.getItem('saju_user_token'); // 저장된 자동 인증 ID 확인
-
-    if (!email) {
-        alert("🔒 유료 서비스 이용을 위해 이메일 주소를 입력해 주세요.");
-        return;
-    }
-    resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">인증 확인 및 계산 중...</div>';
-
-    let requestBody = { ...birthInfo, email: email };
-    
-    // 1. 저장된 토큰이 있다면 토큰을 사용 (자동 인증)
-    if (token) {
-        requestBody.token = token;
-    } else {
-        // 2. 토큰이 없다면 (최초 접속), 인증 코드를 물어봅니다.
-        const authCode = prompt("🔒 유료 결제 시 받은 인증 코드를 입력하세요:");
-        if (!authCode) { resultsArea.innerHTML = ''; return; } // 취소 시 종료
-        requestBody.code = authCode;
-    }
-
-    // 서버 호출
-    const response = await fetch('/api/month', {
-        method: 'POST', body: JSON.stringify(requestBody),
-        headers: { 'Content-Type': 'application/json' }
-    });
-
-    if (response.status === 401) {
-        localStorage.removeItem('saju_user_token'); // 실패 시 토큰 삭제
-        alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다.");
-        resultsArea.innerHTML = ''; 
-        return;
-    }
-
-    const result = await response.json();
-
-    // 서버가 새 토큰을 주면 저장합니다. (자동 인증 ID 업데이트)
-    if (result.access_token) {
-        localStorage.setItem('saju_user_token', result.access_token);
-    }
-    
-    resultsArea.innerHTML = result.htmlContent; // 결과 표시
-});
 </script>
+//==============================================================
 </body>
 </html>
