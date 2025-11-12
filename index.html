@@ -16,8 +16,7 @@
   p.desc{color:var(--muted);margin:8px 0 12px}
   label{display:block;margin-top:12px;font-weight:700}
   .row{display:flex;gap:8px;flex-wrap:wrap}
-  /* input[type="date"] 스타일 제거 */
-  input[type="text"], select, input[type="text"], button, .text-input-birth{padding:10px;border-radius:6px;border:1px solid #ccc;font-size:16px;box-sizing:border-box}
+  input[type="date"], select, input[type="text"], button{padding:10px;border-radius:6px;border:1px solid #ccc;font-size:16px;box-sizing:border-box}
   button{cursor:pointer;background:var(--accent);color:#fff;border:none;font-weight:700;transition:background .2s}
   button:hover{background:#b45309}
   .small{padding:6px 10px;font-size:12px;border-radius:4px}
@@ -39,13 +38,12 @@
   .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600}
   .cat-buttons{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   .cat-buttons button{background:#eee;color:#333;border:1px solid #ccc;font-weight:600;padding:8px 12px}
-  .cat-buttons button.active{background:var(--accent);color:var(--card);border-color:var(--accent)}
+  .cat-buttons button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
   #lottoTimeDisplay div{font-size:14px;margin-top:4px}
   #savedList{margin-top:10px;padding:8px;border:1px solid #eee;border-radius:8px;}
   @media (max-width: 600px) {
     .row{flex-direction:column;gap:12px}
-    /* input[type="date"] 제거 */
-    input[type="text"], select, input[type="text"], button{width:100%}
+    input[type="date"], select, input[type="text"], button{width:100%}
     .pillar-row{justify-content:space-around}
   }
 </style>
@@ -60,11 +58,11 @@
   
   <div class="card">
     <div class="title">사용자 사주 입력 (기준)</div>
-    <label>생년월일 (양력) - <span style="font-weight:400; color:#999; font-size:14px;">숫자로 년, 월, 일을 입력하세요.</span></label>
+    <label>생년월일 (양력)</label>
     <div class="row">
-      <input type="number" id="birthYear" class="text-input-birth" placeholder="년(YYYY)" required style="flex: 2;">
-      <input type="number" id="birthMonth" class="text-input-birth" placeholder="월(MM)" required style="flex: 1;">
-      <input type="number" id="birthDay" class="text-input-birth" placeholder="일(DD)" required style="flex: 1;">
+      <select id="birthYear"></select>
+      <select id="birthMonth"></select>
+      <select id="birthDay"></select>
     </div>
     <label>출생시 / 성별</label>
     <div class="row">
@@ -151,23 +149,13 @@
 
 <script>
 // ======================================================================
-// [도움 함수] 입력창에서 데이터 가져오기 (텍스트 입력 필드 3개 사용)
+// [도움 함수] 입력창에서 데이터 가져오기
 // ======================================================================
 function getBirthInfo() { 
-    const year = document.getElementById('birthYear').value;
-    const month = document.getElementById('birthMonth').value;
-    const day = document.getElementById('birthDay').value;
-    
-    // 유효성 검사 (입력되었는지)
-    if (!year || !month || !day) {
-        alert("생년월일 (년/월/일)을 모두 숫자로 입력해 주세요.");
-        return null;
-    }
-
     return { 
-        year: year, 
-        month: month, 
-        day: day,
+        year: document.getElementById('birthYear').value, 
+        month: document.getElementById('birthMonth').value, 
+        day: document.getElementById('birthDay').value,
         hour: document.getElementById('birthhour').value,
         gender: document.getElementById('gender').value 
     };
@@ -179,6 +167,31 @@ function getQueryInfo() {
         month: document.getElementById('queryMonth').value,
         topN: document.getElementById('topN').value
     };
+}
+
+// ----------------------------------------------------------------------
+// [핵심 함수] 생년월일 드롭다운 채우기 (birthYear, birthMonth, birthDay)
+// ----------------------------------------------------------------------
+function initBirthSelectors() {
+    const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
+    
+    if (!y || !m || !d) {
+        console.error("드롭다운 ID(birthYear, birthMonth, birthDay)를 HTML에서 찾을 수 없습니다.");
+        return;
+    }
+
+    const now=new Date();
+    y.innerHTML = ''; m.innerHTML = ''; d.innerHTML = ''; 
+
+    // 연도 옵션 채우기 (현재-80년부터 현재 연도까지)
+    for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
+        const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
+    }
+    y.value = now.getFullYear() - 30; // 기본값 설정 
+    
+    // 월/일 옵션 채우기
+    for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
+    for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
 }
 
 // ----------------------------------------------------------------------
@@ -209,41 +222,41 @@ function initQuerySelectors() {
 
 
 // ----------------------------------------------------------------------
-// [초기화] 페이지 로드 시 초기값 설정 (IIFE 패턴으로 즉시 실행 보장)
+// [초기화] 페이지 로드 시 드롭다운 채우기 (IIFE 패턴으로 즉시 실행 보장)
 // ----------------------------------------------------------------------
 (function initSelectors() {
-    initQuerySelectors(); // 조회 연/월 드롭다운만 채우기
+    initBirthSelectors(); // 사용자 생년월일 드롭다운 채우기
+    initQuerySelectors(); // 조회 연/월 드롭다운 채우기
     
+    // 생년월일 초기값 설정 (오늘 날짜)
     const now = new Date();
-    const todayISO = now.toISOString().split('T')[0];
-
-    // 생년월일 텍스트 입력 필드에 기본값 설정 (선택 사항 - 없어도 됨)
-    // document.getElementById('birthYear').value = now.getFullYear();
-    // document.getElementById('birthMonth').value = now.getMonth() + 1;
-    // document.getElementById('birthDay').value = now.getDate();
+    document.getElementById('birthMonth').value = now.getMonth() + 1;
+    document.getElementById('birthDay').value = now.getDate();
 
     // 단일 날짜 확인 입력창 기본값 설정 (오늘)
     const queryDate = document.getElementById('queryDate');
+    const todayISO = now.toISOString().split('T')[0];
     if (queryDate) queryDate.value = todayISO;
 
+    // 초기 만세력 표시 (선택사항)
+    // displayPillars(); 
 })();
 
 
 // ----------------------------------------------------------------------
-// [이벤트 등록] 버튼 이벤트 등록
+// [이벤트 등록] DOMContentLoaded 대신 window.onload를 사용하거나 
+// IIFE 패턴으로 요소가 준비되었을 때 즉시 이벤트 등록을 시작합니다.
 // ----------------------------------------------------------------------
 
 // 1. 오늘의 운세 (무료) - /api/today 호출
 document.getElementById('todayBtn').addEventListener('click', async () => {
-    const birthInfo = getBirthInfo();
-    if (!birthInfo) return;
+    // 서버 호출 로직 (생략되었던 부분)
     alert("오늘 운세 로직 (서버 통신)이 실행될 위치입니다.");
 });
 
 // 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
 document.getElementById('monthTopBtn').addEventListener('click', async () => {
     const birthInfo = getBirthInfo();
-    if (!birthInfo) return;
     const queryInfo = getQueryInfo();
     const resultsArea = document.getElementById('results');
     const email = document.getElementById('emailInput').value;
@@ -289,15 +302,15 @@ document.getElementById('monthTopBtn').addEventListener('click', async () => {
 
 // 3. 단일 날짜 확인 버튼
 document.getElementById('checkDateBtn').addEventListener('click', async () => {
-    const birthInfo = getBirthInfo();
-    if (!birthInfo) return;
+    // 서버 호출 로직 (생략되었던 부분)
     alert("단일 날짜 운세 로직 (서버 통신)이 실행될 위치입니다.");
 });
 
-// 4. '오늘' 버튼 클릭 시 (조회 날짜 필드만 업데이트)
+// 4. '오늘' 버튼 클릭 시
 document.getElementById('todayBtn').addEventListener('click', () => {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('queryDate').value = today;
+    // alert("오늘 버튼이 클릭되었습니다.");
 });
 
 // 5. 카테고리 필터 (기존 로직 유지)
@@ -308,6 +321,7 @@ document.querySelectorAll('.cat-buttons button').forEach(btn=>{
         const cat=btn.dataset.cat; 
         const resultsArea=document.getElementById('results'); 
         
+        // 결과 필터링 로직 (결과 데이터가 있을 경우 동작)
         Array.from(resultsArea.children).forEach(child=>{ 
             if(cat==='all'){ 
                 child.style.display='block'; 
