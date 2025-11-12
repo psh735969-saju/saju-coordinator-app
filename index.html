@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>운세 추천 서비스 — 최종 통합판 (고급 명리학 로직 안정화)</title>
+<style>
+  :root{
+    --bg:#fbfbfc; --card:#fff; --accent:#d97706; --muted:#666;
+    --high:#16a34a; --mid:#f59e0b; --low:#6b7280; --def:#9ca3af;
+  }
+  html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial;background:var(--bg);color:#111}
+  .wrap{max-width:820px;margin:0 auto;padding:20px;}
+  header{display:flex;justify-content:space-between;align-items:center}
+  h1{margin:0;color:var(--accent);font-size:20px}
+  p.desc{color:var(--muted);margin:8px 0 12px}
+  label{display:block;margin-top:12px;font-weight:700}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input[type="date"], select, input[type="text"], button{padding:10px;border-radius:6px;border:1px solid #ccc;font-size:16px;box-sizing:border-box}
+  button{cursor:pointer;background:var(--accent);color:#fff;border:none;font-weight:700;transition:background .2s}
+  button:hover{background:#b45309}
+  .small{padding:6px 10px;font-size:12px;border-radius:4px}
+  .card{background:var(--card);border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.08);padding:16px;margin-top:20px}
+  .card .title{font-size:18px;font-weight:700;color:var(--accent);border-bottom:1px solid #eee;padding-bottom:8px;margin-bottom:12px}
+  #pillars{margin-top:16px;padding:12px;border:1px dashed #ddd;border-radius:8px}
+  .pillar-row{display:flex;justify-content:space-around;text-align:center}
+  .pillar-cell{flex:1;padding:0 8px}
+  .pillar-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .pillar-tg{font-size:24px;font-weight:700;color:#333}
+  .pillar-dz{font-size:18px;color:var(--accent);margin-top:2px}
+  #results{margin-top:20px}
+  .single-result{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-bottom:1px solid #eee}
+  .single-result:last-child{border-bottom:none}
+  .single-result .title{font-size:16px;font-weight:700}
+  .single-result .right-fixed{display:flex;flex-direction:column;align-items:flex-end;gap:8px;margin-left:15px}
+  .score-box{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1)}
+  .actions{display:flex;gap:4px}
+  .badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:12px;margin-left:8px;font-weight:600}
+  .cat-buttons{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .cat-buttons button{background:#eee;color:#333;border:1px solid #ccc;font-weight:600;padding:8px 12px}
+  .cat-buttons button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  #lottoTimeDisplay div{font-size:14px;margin-top:4px}
+  #savedList{margin-top:10px;padding:8px;border:1px solid #eee;border-radius:8px;}
+  @media (max-width: 600px) {
+    .row{flex-direction:column;gap:12px}
+    input[type="date"], select, input[type="text"], button{width:100%}
+    .pillar-row{justify-content:space-around}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>운세 비서</h1>
+    <p class="desc">사주 기반 월별/일별 추천</p>
+  </header>
+  
+  <div class="card">
+    <div class="title">사용자 사주 입력 (기준)</div>
+    <label>생년월일 (양력)</label>
+    <div class="row">
+      <select id="birthYear"></select>
+      <select id="birthMonth"></select>
+      <select id="birthDay"></select>
+    </div>
+    <label>출생시 / 성별</label>
+    <div class="row">
+      <select id="birthhour">
+        <option value="">시 선택 안함 (일주만)</option>
+        <option value="0">자시 (23:30 ~ 01:29)</option>
+        <option value="2">축시 (01:30 ~ 03:29)</option>
+        <option value="4">인시 (03:30 ~ 05:29)</option>
+        <option value="6">묘시 (05:30 ~ 07:29)</option>
+        <option value="8">진시 (07:30 ~ 09:29)</option>
+        <option value="10">사시 (09:30 ~ 11:29)</option>
+        <option value="12">오시 (11:30 ~ 13:29)</option>
+        <option value="14">미시 (13:30 ~ 15:29)</option>
+        <option value="16">신시 (15:30 ~ 17:29)</option>
+        <option value="18">유시 (17:30 ~ 19:29)</option>
+        <option value="20">술시 (19:30 ~ 21:29)</option>
+        <option value="22">해시 (21:30 ~ 23:29)</option>
+      </select>
+      <select id="gender">
+        <option value="male">남성</option>
+        <option value="female">여성</option>
+      </select>
+    </div>
+    <label for="emailInput" style="margin-top:12px; font-weight:700;">
+    🔒 유료 서비스 인증용 이메일 주소
+    </label>
+    <input type="email" id="emailInput" placeholder="결제 시 사용한 이메일 입력" required 
+       style="width: 100%; padding: 10px; margin-bottom: 15px; box-sizing: border-box;">
+    
+    <div id="pillars">만세력 정보가 여기에 표시됩니다.</div>
+  </div>
+  
+  <div class="card">
+    <div class="title">운세 조회</div>
+    <div class="row" style="align-items:flex-end;">
+      <div style="flex:1;">
+        <label>조회 연/월</label>
+        <div class="row" style="gap:4px">
+          <select id="queryYear"></select>
+          <select id="queryMonth"></select>
+        </div>
+      </div>
+      <button id="monthTopBtn" style="flex:0;">한달 전체 추천 보기</button>
+      <select id="topN" style="width:70px;flex:0;">
+        <option value="3">Top 3</option>
+        <option value="5" selected>Top 5</option>
+        <option value="7">Top 7</option>
+      </select>
+    </div>
+
+    <div style="margin-top:16px;">
+      <label>단일 날짜 확인</label>
+      <div class="row" style="gap:4px">
+        <input type="date" id="queryDate" style="flex:1;">
+        <button id="todayBtn" class="small">오늘</button>
+        <button id="checkDateBtn">날짜 확인</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="title">조회 결과</div>
+    <div class="cat-buttons">
+      <button data-cat="all" class="active">전체</button>
+      <button data-cat="wealth">재물</button>
+      <button data-cat="match">인연</button>
+      <button data-cat="business">사업</button>
+      <button data-cat="travel">여행</button>
+      <button data-cat="move">이사</button>
+    </div>
+    <div id="results"></div>
+  </div>
+  
+  <div class="card">
+    <div class="title">저장된 추천 목록</div>
+    <div id="savedList"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="small" onclick="if(!localDev){ alert('배포모드 인증 필요'); return; } saveSaved([]); alert('저장 목록 초기화 완료');">목록 초기화</button>
+        <button class="small" onclick="if(!localDev){ alert('배포모드 인증 필요'); return; } localDev=!localDev; alert(localDev ? '개발 모드 활성화' : '배포 모드 활성화');" style="background:#555;">모드 전환</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// index.html의 <script> 태그 안의 최종 내용 (기존 내용 모두 삭제 후 이 코드로 대체)
+
+// ----------------------------------------------------------------------
+// [도움 함수] 입력창에서 데이터 가져오기
+// ----------------------------------------------------------------------
+function getBirthInfo() {
+    return { 
+        year: document.getElementById('birthYear').value, 
+        month: document.getElementById('birthMonth').value, 
+        day: document.getElementById('birthDay').value,
+        hour: document.getElementById('birthhour').value,
+        gender: document.getElementById('gender').value 
+    };
+}
+function initBirthSelectors() {
+    // 사장님의 기존 초기화 로직을 여기에 다시 붙여넣으세요.
+    // (예: document.getElementById('birthYear').value = new Date().getFullYear();)
+}
+(function initSelectors(){ 
+    // 사장님의 기존 셀렉터 초기화 로직을 여기에 다시 붙여넣으세요.
+    initBirthSelectors(); 
+})(); 
+
+// ----------------------------------------------------------------------
+// 1. 오늘의 운세 (무료) - /api/today 호출
+// ----------------------------------------------------------------------
+document.getElementById('todayBtn').addEventListener('click', async () => {
+    const birthInfo = getBirthInfo();
+    const resultsArea = document.getElementById('results');
+    resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">계산 중...</div>';
+    
+    // 무료 API 호출
+    const response = await fetch('/api/today', {
+        method: 'POST', body: JSON.stringify(birthInfo),
+        headers: { 'Content-Type': 'application/json' }
+    });
+    
+    const result = await response.json();
+    if(response.status === 200) resultsArea.innerHTML = result.htmlContent;
+    else resultsArea.innerHTML = '무료 서비스 오류 발생.';
+});
+
+
+// ----------------------------------------------------------------------
+// 2. 한 달 추천 (유료) - /api/month 호출 (토큰 기반)
+// ----------------------------------------------------------------------
+document.getElementById('monthTopBtn').addEventListener('click', async () => {
+    const birthInfo = getBirthInfo();
+    const resultsArea = document.getElementById('results');
+    const email = document.getElementById('emailInput').value;
+    const token = localStorage.getItem('saju_user_token'); // 저장된 자동 인증 ID 확인
+
+    if (!email) {
+        alert("🔒 유료 서비스 이용을 위해 이메일 주소를 입력해 주세요.");
+        return;
+    }
+    resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">인증 확인 및 계산 중...</div>';
+
+    let requestBody = { ...birthInfo, email: email };
+    
+    // 1. 저장된 토큰이 있다면 토큰을 사용 (자동 인증)
+    if (token) {
+        requestBody.token = token;
+    } else {
+        // 2. 토큰이 없다면 (최초 접속), 인증 코드를 물어봅니다.
+        const authCode = prompt("🔒 유료 결제 시 받은 인증 코드를 입력하세요:");
+        if (!authCode) { resultsArea.innerHTML = ''; return; }
+        requestBody.code = authCode;
+    }
+
+    // 서버 호출
+    const response = await fetch('/api/month', {
+        method: 'POST', body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.status === 401) {
+        localStorage.removeItem('saju_user_token'); // 실패 시 토큰 삭제
+        alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다. 다시 시도해 주세요.");
+        resultsArea.innerHTML = ''; 
+        return;
+    }
+
+    const result = await response.json();
+
+    // 서버가 새 토큰을 주면 저장합니다. (자동 인증 ID 업데이트)
+    if (result.access_token) {
+        localStorage.setItem('saju_user_token', result.access_token);
+    }
+    
+    if(response.status === 200) resultsArea.innerHTML = result.htmlContent;
+    else resultsArea.innerHTML = '유료 서비스 오류 발생.';
+});
+</script>
+</body>
+</html>
