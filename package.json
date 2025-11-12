@@ -1,0 +1,12 @@
+{
+  "name": "saju-project",
+  "version": "1.0.0",
+  "description": "운세 추천 서비스 백엔드 API",
+  "main": "index.html",
+  "scripts": {
+    "start": "echo 'Vercel will handle serverless deployment'"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  }
+}
