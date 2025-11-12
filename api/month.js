@@ -1,4 +1,5 @@
-// /api/month.js 파일의 최종 내용 (전체)
+// /api/month.js 파일 (최종 수정본)
+// *주의: 이 코드는 Vercel 서버리스 환경에서만 실행됩니다. DOM(document) 관련 코드는 모두 제거됨.
 
 // ⭐️ 맨 위: DB 접속용 라이브러리 및 함수
 import { MongoClient } from 'mongodb'; 
@@ -6,14 +7,15 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGODB_URI; 
 const generateToken = () => Math.random().toString(36).substring(2, 15) + Date.now(); // 자동 인증 ID 생성
 
+// --------------------------------------------------------------------------
+// 🚨 사주 계산 로직 내부에서 참조하는 전역 변수 설정 (필수)
+// 사장님의 사주 함수들이 이 전역 변수에 의존하므로, 여기서 선언하고 핸들러 안에서 값을 할당합니다.
+let USER_SAJU_PILLARS = null; 
 
 // --------------------------------------------------------------------------
-
-/* ----------------------------------------------------------------------------------
-   [PLACEHOLDER] 사주 핵심 로직: 젬사주코디완성본.html에서 오려낸 모든 상수와 함수 정의
-   사장님의 원본 파일에서 TIANGAN, DIZHI 상수부터 monthTopN 함수까지 모든 코드를 복사해서
-   이 블록 안에 붙여넣으세요. (today.js와 동일)
-   ---------------------------------------------------------------------------------- */
+// [핵심] 사주 핵심 로직: 모든 상수와 함수 정의
+// 이 부분은 사장님의 원본 파일에서 TIANGAN, DIZHI 상수부터 monthTopN, generateLottoScores 함수까지 
+// 사주 계산에 필요한 모든 코드를 포함하고 있어야 합니다.
 
 const TIANGAN=['갑','을','병','정','무','기','경','신','임','계'];
 const DIZHI=['자','축','인','묘','진','사','오','미','신','유','술','해'];
@@ -27,7 +29,6 @@ const OHAENG_COLOR = { '목': '녹색/청록색', '화': '빨간색/주황색', 
 const OHAENG_OUTFIT = { '목': '면,린넨 등 자연 소재 의상', '화': '화려한 액세서리나 활동적인 옷', '토': '단정하고 안정적인 스타일', '금': '금속 장식이나 구조적인 의상', '수': '부드러운 소재나 루즈핏 의상' };
 const OHAENG_ACTION = { '목': '새로운 일 시작, 기획 회의', '화': '대외 활동, 사교적인 만남', '토': '계약 체결, 부동산 거래', '금': '업무 마무리, 재정 정리', '수': '휴식, 자기 계발, 아이디어 구상' };
 const DZ_CLASH_MAP = { '자': '오', '오': '자', '묘': '유', '유': '묘', '인': '신', '신': '인', '사': '해', '해': '사', '진': '술', '술': '진', '축': '미', '미': '축' }; // 일지 충돌 확인용
-
 
 // 고급 명리학 계산을 위한 상수 정의
 const DZ_HIDDEN = { // 지지 장간 (通根 계산용)
@@ -139,7 +140,7 @@ function generateCoordinationAdvice(userDayTG, dayPillars) {
     }
     
     // 일지 충 (구설수/변동) 분석
-    const userDayDZ = USER_SAJU_PILLARS.day.dz; 
+    const userDayDZ = USER_SAJU_PILLARS.day.dz; // 🚨 전역 변수 의존
     const dayDZ = dayPillars.day.dz; 
     
     if (DZ_CLASH_MAP[userDayDZ] === dayDZ) { 
@@ -306,6 +307,7 @@ function calculateSubThemeScores(datePillars, category, userDayTG) {
 
 // scoreForCategory 함수 (고급 로직 사용)
 function scoreForCategory(datePillars, cat){ 
+    // 🚨 전역 변수 USER_SAJU_PILLARS에 의존
     if (!USER_SAJU_PILLARS || !USER_SAJU_PILLARS.day || !USER_SAJU_PILLARS.day.tg) return 50;
     
     const userDayTG = USER_SAJU_PILLARS.day.tg; 
@@ -375,106 +377,69 @@ function getTravelAdvice(theme) {
     if (theme.includes('가족')) return '가족과의 시간을 통해 소중한 추억을 만들고 화합을 도모하세요.';
     if (theme.includes('지적인')) return '박물관이나 도서관 등 지적인 활동에 집중하세요.';
     if (theme.includes('쇼핑')) return '쇼핑이나 즐거운 활동으로 스트레스를 해소하고 결실을 얻으세요.';
-    return '평이한 하루를 보낼 수 있는 곳이 좋습니다.';
+    return '평이한 하루를 보낼 수 있는 곳이 좋습니다.'; 
 }
 function getTravelDistance(score) {
-    const MAX_DISTANCE = 500;
+    const MAX_DISTANCE = 500; 
     const simpleDist = Math.round(10 * (score / 20)); 
-    return `${Math.min(simpleDist, MAX_DISTANCE)}km ~ ${Math.min(simpleDist + 50, MAX_DISTANCE * 2)}km`;
+    return `${Math.min(simpleDist, MAX_DISTANCE)}km ~ ${Math.min(simpleDist + 50, MAX_DISTANCE * 2)}km`; 
 }
-function evaluateYearInfluence(year, cat) {
+function evaluateYearInfluence(year, cat) { 
     if (year % 5 === 0 && (cat === 'wealth' || cat === 'business')) return 5; 
-    if (year % 7 === 0 && cat === 'match') return 5;
-    return 0;
-}
-
+    if (year % 7 === 0 && cat === 'match') return 5; 
+    return 0; 
+} 
 
 // getStrategyByScore 함수 (기존 유지)
-function getStrategyByScore(userDayTG, category, score, extraRec = {}) {
+function getStrategyByScore(userDayTG, category, score, extraRec = {}) { 
     if (!userDayTG || !TG_ELEM[userDayTG]) userDayTG = '갑'; 
-
     const dayElem = TG_ELEM[userDayTG]; 
-
-    if (category === 'wealth') {
-        if (score >= 80) return { title: '대규모 투자/계약 실행', desc: '🚀 새로운 자산에 공격적으로 투자하거나 주요 계약을 실행하여 성과를 극대화하십시오.' };
-        if (score >= 60) return { title: '장기 저축/재테크 집중', desc: '📈 급격한 변화보다는 안정적인 장기 저축이나 포트폴리오 재구성에 집중하십시오.' };
-        if (score >= 40) return { title: '현상 유지 및 지출 통제', desc: '⚖️ 큰 변화 없이 현금 흐름을 안정적으로 유지하고, 불필요한 충동적인 지출을 삼가십시오.' };
-        return { title: '지갑 단속, 소액 투자도 자제', desc: '🚧 현금 유출에 주의하고, 모든 신규 투자를 미루십시오.' };
+    if (category === 'wealth') { 
+        if (score >= 80) return { title: '대규모 투자/계약 실행', desc: '🚀 새로운 자산에 공격적으로 투자하거나 주요 계약을 실행하여 성과를 극대화하십시오.' }; 
+        if (score >= 60) return { title: '안정적 투자/현금 확보', desc: '💰 안전한 범위 내에서 투자를 진행하고 현금 유동성을 확보하는 데 집중하십시오.' };
+        if (score >= 40) return { title: '현상 유지 및 위험 관리', desc: '🛡️ 예상치 못한 지출이나 위험을 관리하며 현상 유지를 목표로 하십시오.' }; 
+        return { title: '휴식/재정비', desc: '😴 중요 결정은 미루고, 휴식을 취하며 아이디어를 재정비하십시오.' }; 
     } 
-    
     if (category === 'match') {
-        if (score >= 80) return { title: '적극적인 만남 추진', desc: '❤️ 인연 운이 강하니, 적극적으로 활동하여 좋은 인연을 맺으십시오.' };
-        if (score >= 60) return { title: '만남의 장 확대', desc: '😊 기존 관계를 발전시키고 새로운 모임에 참여하여 기회를 넓히십시오.' };
-        if (score >= 40) return { title: '관계를 신중하게 유지', desc: '🤔 충동적인 만남은 피하고, 기존 관계를 돌아보는 데 집중하십시오.' };
-        return { title: '대인 관계 휴식', desc: '🧘 잠시 혼자만의 시간을 가지며 다음 기회를 기다리십시오.' };
+        if (score >= 80) return { title: '적극적인 만남 추진', desc: '💖 평소 관심 있던 사람에게 적극적으로 접근하거나 중요한 만남을 주선하십시오.' }; 
+        if (score >= 60) return { title: '기존 관계 발전 모색', desc: '🤝 현재의 인연과 관계를 돈독히 하고, 발전시킬 기회를 찾으십시오.' };
+        if (score >= 40) return { title: '소극적 만남/내실 다지기', desc: '🧘‍♀️ 무리한 관계 진전보다는 내실을 다지며 주변 상황을 관찰하십시오.' }; 
+        return { title: '구설수/오해 방지', desc: '🗣️ 감정적인 충돌이나 오해를 부를 수 있는 상황을 피하고 말을 아끼십시오.' };
     }
-    
     if (category === 'business') {
-        // 사업 전략 (하위 테마 중 최고 점수 기준)
-        if (score >= 80) return { title: '사업 확장/주요 계약 체결', desc: '🌟 추진력을 발휘하여 사업을 확장하고 대규모 계약을 성사시키십시오.' };
-        if (score >= 60) return { title: '내부 정리 및 효율화', desc: '💡 큰 변화보다 내부 시스템을 점검하고 효율화하는 데 집중하십시오.' };
-        if (score >= 40) return { title: '현상 유지 및 위험 관리', desc: '🛡️ 예상치 못한 지출이나 위험을 관리하며 현상 유지를 목표로 하십시오.' };
-        return { title: '휴식/재정비', desc: '😴 중요 결정은 미루고, 휴식을 취하며 아이디어를 재정비하십시오.' };
+        if (score >= 80) return { title: '주요 프로젝트 및 발표', desc: '📈 추진력을 발휘하여 주요 프로젝트를 개시하거나 공식적으로 성과를 발표하십시오.' }; 
+        if (score >= 60) return { title: '업무 시스템 점검 및 효율화', desc: '⚙️ 업무 시스템을 점검하고 효율화하는 데 집중하십시오.' }; 
+        if (score >= 40) return { title: '현상 유지 및 위험 관리', desc: '🛡️ 예상치 못한 지출이나 위험을 관리하며 현상 유지를 목표로 하십시오.' }; 
+        return { title: '휴식/재정비', desc: '😴 중요 결정은 미루고, 휴식을 취하며 아이디어를 재정비하십시오.' }; 
     }
-    
-    if (category === 'travel') {
-        if (score >= 80) return { title: '장거리/장기간 여행 추천', desc: '✈️ 새로운 경험과 에너지 충전을 위해 길게 떠나는 여행이 좋습니다.' };
-        if (score >= 60) return { title: '중단거리 여행 추천', desc: '🚞 주말을 활용하여 기분 전환할 수 있는 중거리 여행을 계획하십시오.' };
-        if (score >= 40) return { title: '근거리/당일치기 추천', desc: '🚶 근처에서 가볍게 기분을 전환할 수 있는 당일치기 여행이 좋습니다.' };
-        return { title: '여행 자제, 휴식 필요', desc: '🏠 에너지가 부족하니, 집에서 충분한 휴식을 취하십시오.' };
-    }
-    
+    if (category === 'travel') { 
+        if (score >= 80) return { title: '장거리/장기간 여행 추천', desc: '✈️ 새로운 경험과 에너지 충전을 위해 길게 떠나는 여행이 좋습니다.' }; 
+        if (score >= 60) return { title: '중단거리 여행 추천', desc: '🚞 주말을 활용하여 기분 전환할 수 있는 중거리 여행을 계획하십시오.' }; 
+        if (score >= 40) return { title: '근거리/당일치기 추천', desc: '🚶 근처에서 가볍게 기분을 전환할 수 있는 당일치기 여행이 좋습니다.' }; 
+        return { title: '여행 자제, 휴식 필요', desc: '🏠 에너지가 부족하니, 집에서 충분한 휴식을 취하십시오.' }; 
+    } 
     if (category === 'move' && extraRec.fortuneElement) { 
         const theme = extraRec.bestTheme; 
-        const moveAdvice = extraRec.moveAdvice || ''; // 흉살방 조언
-        return { 
-            title: `이사 길함 테마: ${theme}`, 
-            desc: `✨ ${extraRec.fortuneElement} 기운을 활용하는 이사에 길합니다. ${moveAdvice}`
-        }; 
-    }
-    
+        const moveAdvice = extraRec.moveAdvice || ''; // 흉살방 조언 
+        return { title: `이사 길함 테마: ${theme}`, desc: `✨ ${extraRec.fortuneElement} 기운을 활용하는 이사에 길합니다. ${moveAdvice}` }; 
+    } 
     return { title: '일반적 권장', desc: '평이한 날입니다. 일상적인 활동을 유지하십시오.' }; 
-}
+} 
 
-// 로또 번호 생성 로직 추가 (사주 오행 강도 기반) (기존 유지)
-function generateLottoNumbers(dayPillars) {
-    const ohaengStrengths = {};
-    ['목','화','토','금','수'].forEach(elem => {
-         ohaengStrengths[elem] = getElementStrength(dayPillars, elem);
-    });
-    
-    // 오행 강도를 기반으로 번호 범위와 가중치 설정 (1~45)
-    // 오행별 번호 범위: 목(1-9), 화(10-18), 토(19-27), 금(28-36), 수(37-45)
-    const ohaengRanges = {
-        '목': [1, 9], '화': [10, 18], '토': [19, 27], '금': [28, 36], '수': [37, 45]
-    };
-    
-    // 가장 강한 1~2개 오행 찾기
-    const sortedOhaeng = Object.entries(ohaengStrengths).sort(([, a], [, b]) => b - a);
-    const strongestOhaeng = sortedOhaeng.slice(0, 2).map(([elem]) => elem);
-    
-    // 번호 가중치 생성: 강한 오행의 번호 범위에 가중치 부여 (3배)
-    let weightMap = new Array(45).fill(1);
-    strongestOhaeng.forEach(elem => {
-        const [min, max] = ohaengRanges[elem];
-        for (let i = min; i <= max; i++) {
-            weightMap[i - 1] = 3; 
-        }
-    });
-
-    // 5세트 생성
+// 복권 번호 및 점수 계산 로직 (유료 서비스 핵심)
+function generateLottoNumbers(jaeStrength) {
+    const weightMap = Array.from({ length: 45 }, (_, i) => Math.round(5 + (i * (jaeStrength / 10)))); 
     const sets = [];
-    for (let s = 0; s < 5; s++) {
+    for (let setIndex = 0; setIndex < 5; setIndex++) {
         const numbers = new Set();
         let attempts = 0;
-        while (numbers.size < 6 && attempts < 1000) { // 무한 루프 방지
-            let pool = [];
-            for (let i = 1; i <= 45; i++) {
-                for (let j = 0; j < weightMap[i - 1]; j++) {
-                    pool.push(i);
-                }
+        const pool = [];
+        for (let i = 1; i <= 45; i++) {
+            for (let j = 0; j < weightMap[i - 1]; j++) {
+                pool.push(i);
             }
-            // 가중치 풀에서 무작위 선택
+        }
+        while (numbers.size < 6 && attempts < 100) {
             const randIndex = Math.floor(Math.random() * pool.length);
             numbers.add(pool[randIndex]);
             attempts++;
@@ -483,560 +448,148 @@ function generateLottoNumbers(dayPillars) {
     }
     return sets;
 }
-
-// 복권 점수 로직 (로또 번호 생성 추가) (기존 유지)
-function generateLottoScores(dayPillars, userDayTG) {
-    const dayElem = TG_ELEM[userDayTG];
+function generateLottoScores(dayPillars, userDayTG) { 
+    const dayElem = TG_ELEM[userDayTG]; 
     const jaeElem = OHENG_SANGGEUK_MAP[dayElem]; 
-
     let jaeStrength = getElementStrength(dayPillars, jaeElem); 
-    
-    // 복권별 점수 계산 (재성 강도 및 성격 반영)
-    let instantScore = Math.round(50 + (jaeStrength * 8)); // 편재 성격 (단기/횡재성)
-    let pensionScore = Math.round(50 + (jaeStrength * 5)); // 정재 성격 (장기/안정성)
-    let lottoScore = Math.round(50 + (jaeStrength * 10)); // 편재 성격 (횡재성 극대화)
-
-    // 일간과의 오행 관계 점수 반영 (재물운이 너무 약하면 점수 하락)
-    const overallDayScore = ['year', 'month', 'day', 'hour'].reduce((sum, k) => sum + getOhaengRelationshipScore(dayElem, TG_ELEM[dayPillars[k].tg]), 0);
-    if (overallDayScore < -5) {
-        instantScore = Math.max(20, instantScore - 10);
-        lottoScore = Math.max(20, lottoScore - 15);
-    }
-    
-    instantScore = Math.min(99, Math.max(10, instantScore));
-    pensionScore = Math.min(99, Math.max(10, pensionScore));
+    // 복권별 점수 계산 (재성 강도 및 성격 반영) 
+    let instantScore = Math.round(50 + (jaeStrength * 8)); // 편재 성격 (단기/횡재성) 
+    let pensionScore = Math.round(50 + (jaeStrength * 5)); // 정재 성격 (장기/안정성) 
+    let lottoScore = Math.round(50 + (jaeStrength * 10)); // 편재 성격 (횡재성 극대화) 
+    // 일간과의 오행 관계 점수 반영 (재물운이 너무 약하면 점수 하락) 
+    const overallDayScore = ['year', 'month', 'day', 'hour'].reduce((sum, k) => sum + getOhaengRelationshipScore(dayElem, TG_ELEM[dayPillars[k].tg]), 0); 
+    if (overallDayScore < -5) { 
+        instantScore = Math.max(20, instantScore - 10); 
+        lottoScore = Math.max(20, lottoScore - 15); 
+    } 
+    instantScore = Math.min(99, Math.max(10, instantScore)); 
+    pensionScore = Math.min(99, Math.max(10, pensionScore)); 
     lottoScore = Math.min(99, Math.max(10, lottoScore));
     
-    // 로또 번호 생성 추가
-    const generatedNumbers = generateLottoNumbers(dayPillars); 
-
-    return {
-        instant: instantScore, 
-        pension: pensionScore, 
-        lotto: lottoScore,
-        lottoNumbers: generatedNumbers // NEW: 5세트 로또 번호
-    };
-}
-
-
-// getOptimalLottoTime (기존 유지)
-function getOptimalLottoTime(dayTG) {
-    const dayElem = TG_ELEM[dayTG];
-    let bestTime = null;
-    let maxScore = -99;
+    // 로또 번호 생성 (가중치 사용)
+    const lottoNumbers = generateLottoNumbers(lottoScore / 10);
     
-    for (let h = 0; h < 24; h += 2) {
-        const hourPillar = calcHourPillar(dayTG, h);
-        const hourTG = hourPillar.tg;
-        const hourElem = TG_ELEM[hourTG];
-        
-        // 일간과 상생 또는 비화(같은 오행)하는 시를 찾음
-        let score = getOhaengRelationshipScore(dayElem, hourElem);
-
-        if (score > maxScore) {
-            maxScore = score;
-            bestTime = hourPillar;
-        }
-    }
-    return bestTime;
+    return { instantScore, pensionScore, lottoScore, lottoNumbers }; 
 }
 
+// 월간 추천 결과를 HTML로 변환하는 서버 측 함수 (클라이언트 측 HTML 생성 함수 대체)
+function serverRenderMonthResult(monthResult, birthInfo) {
+    let html = `<div class="result-card"><h2>🔮 ${birthInfo.year}년 ${birthInfo.month}월 한 달 추천 길일</h2>`;
+    html += `<p class="desc" style="color:#666; margin-bottom: 20px;">선택하신 월의 길일 추천 결과를 카테고리별로 모아보았습니다.</p>`;
+    
+    // 월간 데이터 정리 (카테고리별로 묶기)
+    const categorizedResults = {};
+    monthResult.forEach(day => {
+        // day.results 배열을 순회
+        day.results.forEach(res => {
+            const cat = res.category;
+            if (!categorizedResults[cat]) {
+                categorizedResults[cat] = [];
+            }
+            // 필요한 정보만 저장 (HTML 렌더링을 위해)
+            categorizedResults[cat].push({
+                dateStr: day.dateStr,
+                weekday: day.weekday,
+                score: res.score,
+                strategy: res.strategy,
+                categoryLabel: {wealth:'재물',match:'인연',business:'사업',travel:'여행',move:'이사'}[cat]
+            });
+        });
+    });
 
-/* ---------------------------
-   UI 렌더링 및 이벤트 처리
-   --------------------------- */
+    // 카테고리 순서 정의
+    const categoriesOrder = ['wealth', 'match', 'business', 'travel', 'move'];
 
-function getBirthDateFromSelectors() {
-    const y=document.getElementById('birthYear').value;
-    const m=document.getElementById('birthMonth').value;
-    const d=document.getElementById('birthDay').value;
-    if (!y || !m || !d) return null;
-    return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
+    // 카테고리별 결과 HTML 생성
+    categoriesOrder.forEach(cat => {
+        const catResults = categorizedResults[cat];
+        if (!catResults || catResults.length === 0) return;
 
-function parseDateString(dateStr) {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    return new Date(y, m - 1, d);
-}
-
-// displayPillars 함수 - 만세력 표시 및 오류 방지 강화 (기존 유지)
-function displayPillars() {
-    const birthDateISO = getBirthDateFromSelectors();
-    const hourRaw = document.getElementById('birthhour').value;
-    const hour = hourRaw === '' ? null : parseInt(hourRaw, 10);
-    const pillarDiv = document.getElementById('pillars');
-
-    if (!birthDateISO) {
-        pillarDiv.innerHTML = '<div style="color:red;font-weight:700;">⚠️ 생년월일 (년/월/일)을 모두 선택해야 만세력이 표시됩니다.</div>';
-        USER_SAJU_PILLARS = null;
-        return;
-    }
-
-    try {
-        const dt = parseDateString(birthDateISO);
-        USER_SAJU_PILLARS = calculatePillars(dt, hour === null ? 0 : hour);
+        const catLabel = catResults[0].categoryLabel;
+        html += `<div class="month-category-block" data-cat="${cat}" style="margin-top:25px; padding-top:15px; border-top:1px solid #eee;">
+                    <h3 style="color:var(--accent); font-size:18px; margin-bottom:10px;">${catLabel} 분야 추천 길일 (${catResults.length}일)</h3>
+                </div>`;
         
-        const p = USER_SAJU_PILLARS;
-        const dayTG = p.day.tg;
-        const dayMasterOhaeng = TG_ELEM[dayTG];
-
-        // 5. 일간 기반 삶의 목표/비전 문구 (통근 기반)
-        const vision = getUserLifeVision(p);
-        
-        const ohaengStrengths = {};
-        ['목','화','토','금','수'].forEach(elem => {
-             ohaengStrengths[elem] = getElementStrength(p, elem);
+        catResults.sort((a, b) => b.score - a.score).slice(0, 7).forEach(res => { // 상위 7개만 표시
+            html += `<div class="month-day-item" style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px dotted #ddd;">
+                        <div style="font-weight:700; color:#333;">
+                            📅 ${res.dateStr} (${res.weekday}) <span style="font-size:14px; color:var(--muted); margin-left:10px;">${res.strategy.title}</span>
+                        </div>
+                        <span class="badge" style="background:${res.score>=80?'var(--high)':res.score>=65?'var(--mid)':res.score>=50?'var(--low)':'var(--def)'};color:#fff; padding: 4px 8px; border-radius: 4px;">${res.score}점</span>
+                    </div>`;
         });
         
-        const ohaengHtml = Object.entries(ohaengStrengths)
-            .sort(([, a], [, b]) => b - a)
-            .map(([elem, strength]) => 
-                `<span style="font-weight:700; color:${elem === dayMasterOhaeng ? 'var(--accent)' : '#333'}">${elem}:</span> ${strength.toFixed(1)}점`
-            ).join(' | ');
-
-        let html = `
-            <div class="pillar-row">
-                <div class="pillar-cell"><div class="pillar-label">년주</div><div class="pillar-tg">${p.year.tg}</div><div class="pillar-dz">${p.year.dz}</div></div>
-                <div class="pillar-cell"><div class="pillar-label">월주</div><div class="pillar-tg">${p.month.tg}</div><div class="pillar-dz">${p.month.dz}</div></div>
-                <div class="pillar-cell"><div class="pillar-label" style="font-weight:900;color:red;">일주 (나)</div><div class="pillar-tg">${p.day.tg}</div><div class="pillar-dz">${p.day.dz}</div></div>
-                <div class="pillar-cell"><div class="pillar-label">시주</div><div class="pillar-tg">${p.hour.tg}</div><div class="pillar-dz">${p.hour.dz}</div></div>
-            </div>
-            <div style="margin-top:16px; font-size:14px;">
-                <strong>일간(나):</strong> <span style="font-weight:700; color:var(--accent);">${dayTG} (${dayMasterOhaeng})</span>
-            </div>
-            <div style="margin-top:8px; font-size:13px; color:#4a4a4a;">
-                <strong>오행 강도:</strong> ${ohaengHtml}
-            </div>
-            <div style="margin-top:12px; font-size:14px; padding:10px; border-top:1px dashed #eee;">
-                <strong>✨ 삶의 비전:</strong> ${vision}
-            </div>
-        `;
-        
-        // 복권 최적 시각 정보
-        let lottoHtml = '<div style="margin-top:16px; padding-top:10px; border-top:1px dashed #eee;"><strong>💰 복권 구매 최적 시각 (일간 기반):</strong> <div id="lottoTimeDisplay" style="margin-top:6px;">계산 중...</div></div>';
-        
-        // 비동기로 계산 결과 표시
-        
-setTimeout(() => {
-  const lottoTimeDisplay = document.getElementById('lottoTimeDisplay');
-  if (lottoTimeDisplay) {
-    const optimalTime = getOptimalLottoTime(dayTG);
-    if (optimalTime) {
-
-      // ✅ 지지 → 실제 시각 매핑 추가
-      const DZ_TO_TIME = {
-        '자': '23:30 ~ 01:29',
-        '축': '01:30 ~ 03:29',
-        '인': '03:30 ~ 05:29',
-        '묘': '05:30 ~ 07:29',
-        '진': '07:30 ~ 09:29',
-        '사': '09:30 ~ 11:29',
-        '오': '11:30 ~ 13:29',
-        '미': '13:30 ~ 15:29',
-        '신': '15:30 ~ 17:29',
-        '유': '17:30 ~ 19:29',
-        '술': '19:30 ~ 21:29',
-        '해': '21:30 ~ 23:29'
-      };
-
-      const dzName = optimalTime.dz;
-      const timeRange = DZ_TO_TIME[dzName] || '';
-      let displayContent = `
-        <div style="margin-top:6px;">
-          권장 시각: <strong>${dzName}시 (${timeRange})</strong> 
-          (천간 ${optimalTime.tg}${TG_ELEM[optimalTime.tg]} 기운)
-        </div>
-        <div class="muted" style="margin-top:4px;">
-          일간(${dayTG}${dayMasterOhaeng})과 상생/비화하는 기운을 가진 시간대에 구매하십시오.
-        </div>`;
-      lottoTimeDisplay.innerHTML = displayContent;
-    } else {
-      lottoTimeDisplay.innerHTML = `<div style="margin-top:6px;">최적의 상생 시간이 발견되지 않았습니다.</div>`;
-    }
-  }
-}, 0);
-
-
-        pillarDiv.innerHTML = html + lottoHtml;
-
-    } catch (e) {
-        console.error("만세력 표시 오류 발생:", e);
-        pillarDiv.innerHTML = `<div style="color:red;font-weight:700;">❌ 만세력 계산 오류: 입력 값을 확인하거나 콘솔(F12)을 확인하십시오.</div><div class="muted" style="margin-top:6px;">오류 상세: ${e.message}</div>`;
-        USER_SAJU_PILLARS = null;
-    }
-}
-
-
-// getUserLifeVision 함수 - 통근(通根) 상태 반영 (기존 유지)
-function getUserLifeVision(pillars) {
-    const dayMasterTG = pillars.day.tg;
-    const dayMasterOhaeng = TG_ELEM[dayMasterTG];
-    let tonggeunCount = 0;
-    
-    // 일간이 년/월/일/시 지지에 통근하는지 확인 (통근 정의 사용)
-    ['year', 'month', 'day', 'hour'].forEach(k => {
-        const dz = pillars[k].dz;
-        if (DZ_HIDDEN[dz].includes(dayMasterTG)) {
-            tonggeunCount += 1;
+        // 추가 조언 (예시)
+        if (cat === 'move') {
+            html += `<p style="font-size:14px; color:#4a4a4a; margin-top:10px;">📌 **이사 길방 참고:** 이사 항목은 길일 외에 흉살방을 피하는 것이 중요합니다. 이사 결정 시 별도 상담을 통해 최종 방향을 확인하십시오.</p>`;
         }
     });
 
-    const baseVisions = { 
-        '목': '성장과 발전 (창의성, 진취성).', 
-        '화': '열정과 빛 (명예, 외향성).', 
-        '토': '안정과 조율 (중재, 신용).', 
-        '금': '결실과 정의 (원칙, 결단력).', 
-        '수': '지혜와 통찰 (심사숙고, 유연성).' 
-    };
-
-    let vision = baseVisions[dayMasterOhaeng] || '자신만의 길을 찾는 것이 목표입니다.';
-
-    if (tonggeunCount >= 3) {
-        vision = `✨ **(${dayMasterOhaeng} 통근력 극대화)** ✨ ${vision} 잠재력이 매우 강하므로, 당신의 비전을 세상에 강력하게 펼치는 것이 핵심 목표입니다.`;
-    } else if (tonggeunCount === 2) {
-        vision = `🌟 **(${dayMasterOhaeng} 통근력 강함)** 🌟 ${vision} 탄탄한 기반을 활용하여 목표 달성에 집중하고, 인재 양성 및 리더십을 발휘하는 것이 목표입니다.`;
-    } else if (tonggeunCount === 1) {
-        vision = `🌱 **(${dayMasterOhaeng} 통근력 확보)** 🌱 ${vision} 발현을 위해 꾸준히 노력해야 합니다. 내실을 다지고 조력자(인성)를 적극적으로 찾는 것이 목표입니다.`;
-    } else {
-        vision = `💧 **(${dayMasterOhaeng} 통근력 약함)** 💧 ${vision} 자신의 힘을 키우기보다 협력과 지혜(수)를 통해 목표를 달성하고, 내면의 성숙에 집중하십시오.`;
-    }
-    
-    return vision;
+    html += `</div>`;
+    return html;
 }
 
-// [MODIFIED] renderDayAllBlock 함수 - 행운 코디 섹션 추가
-function renderDayAllBlock(dateStr, weekday, resultsArray, lottoTime, dayPillars, coordinationAdvice) {
-    const results = document.getElementById('results');
-    const block = document.createElement('div');
-    block.className='card'; block.dataset.cat='single';
-    const h = document.createElement('div'); h.className='title'; h.textContent=`${dateStr} (${weekday}요일) 단일 날짜 운세`; block.appendChild(h);
-    
-    // 복권 최적 시각 정보
-    const dayTG = dayPillars.day.tg;
-    const dayMasterOhaeng = TG_ELEM[dayTG];
-    let lottoTimeHtml = '';
-    if (lottoTime) {
-        lottoTimeHtml = `<div style="margin-top:12px; padding:10px; border-top:1px dashed #eee; font-size:14px;">
-            <strong>💰 복권 최적 시각:</strong> ${lottoTime.dz}시 (천간 ${lottoTime.tg}${TG_ELEM[lottoTime.tg]} 기운)<br>
-            <div class="muted" style="margin-top:4px;">일간(${dayTG}${dayMasterOhaeng})과 상생/비화하는 기운을 가진 시간에 구매하십시오.</div>
-        </div>`;
-    }
+// monthTopN 함수는 월간 계산 로직이므로, 서버에서만 사용됩니다.
+function monthTopN(userPillars, year, month) { 
+    // 🚨 전역 변수 USER_SAJU_PILLARS 의존성이 있습니다. monthTopN 호출 전에 handler에서 전역변수를 설정해야 합니다.
 
-    block.innerHTML += lottoTimeHtml;
-
-    // NEW: 행운 코디 섹션 추가
-    const coordHtml = `<div style="margin-top:16px; padding:12px; border:1px solid var(--accent); background:#fffdf5; border-radius:8px;">
-        <div style="font-size:18px; font-weight:700; color:var(--accent); margin-bottom:10px;">🌟 오늘의 행운 코디 (길함 오행: ${coordinationAdvice.luckyOhaeng})</div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:14px;">
-            <div><strong>🎨 행운 색상:</strong> <span style="font-weight:700; color:var(--accent);">${coordinationAdvice.luckyColor}</span></div>
-            <div><strong>👔 권장 의상:</strong> ${coordinationAdvice.luckyOutfit}</div>
-            <div><strong>🧭 권장 방향:</strong> ${coordinationAdvice.luckyDirection}</div>
-            <div><strong>🏃 권장 행동:</strong> ${coordinationAdvice.actionAdvice}</div>
-        </div>
-        <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #f0e6cf; color:${coordinationAdvice.warning.includes('사고수') || coordinationAdvice.warning.includes('구설수') ? 'red' : 'green'}; font-weight:700;">
-            🚨 주의 및 조언: ${coordinationAdvice.warning}
-        </div>
-        <div class="muted" style="margin-top:4px; font-size:13px;">
-            ${coordinationAdvice.generalAdvice}
-        </div>
-    </div>`;
-    
-    block.innerHTML += coordHtml;
-
-    resultsArray.forEach(res=>{
-        const node = document.createElement('div'); node.className='single-result';
-        const left = document.createElement('div'); left.className='left';
-        const categoryMap = {wealth:'재물',match:'인연',business:'사업',travel:'여행',move:'이사'};
-        const catLabel = categoryMap[res.category];
-        
-        left.innerHTML = `<div class="title">${catLabel} <span class="badge" style="background:${res.score>=80?'var(--high)':res.score>=65?'var(--mid)':res.score>=50?'var(--low)':'var(--def)'};color:#fff;">${res.score}점</span></div>
-                          <div style="margin-top:6px; font-weight:700;">✅ ${res.strategy.title}</div>
-                          <div class="muted" style="margin-top:2px; font-size:14px;">${res.strategy.desc}</div>`;
-
-        if (res.recommend) {
-             // 사업 항목 상세 점수 표시
-             if (res.category === 'business' && res.recommend && res.recommend.allScores) { 
-                left.innerHTML += `<div style="margin-top:8px; border-top:1px dashed #eee; padding-top:8px;">
-                                    <strong>📈 비즈니스 상세 점수:</strong>
-                                    <div class="muted" style="margin-top:4px; font-size:14px; line-height:1.5;">
-                                      <strong>계약:</strong> ${res.recommend.allScores['계약']}점<br>
-                                      <strong>매매/판매:</strong> ${res.recommend.allScores['매매/판매']}점<br>
-                                      <strong>창업/개시:</strong> ${res.recommend.allScores['창업/개시']}점
-                                    </div>
-                                  </div>`;
-             // 여행 항목 상세 점수 및 방위 표시
-            } else if (res.category === 'travel' && res.recommend && res.recommend.allScores) { 
-                const travelThemeMap = {
-                    '비즈니스 여행': { ohaeng: '목', dir: OHAENG_DIRECTION['목'] },
-                    '힐링 여행': { ohaeng: '토', dir: OHAENG_DIRECTION['토'] },
-                    '가족 여행': { ohaeng: '화', dir: OHAENG_DIRECTION['화'] },
-                    '지적인 여행': { ohaeng: '수', dir: OHAENG_DIRECTION['수'] },
-                    '쇼핑/결실 여행': { ohaeng: '금', dir: OHAENG_DIRECTION['금'] }
-                };
-                let travelHtml = '';
-                for (const [theme, data] of Object.entries(travelThemeMap)) {
-                    travelHtml += `<strong>${theme.split(' ')[0]}(${data.ohaeng}):</strong> ${res.recommend.allScores[theme]}점 <span class="muted">(방위: ${data.dir})</span><br>`;
-                }
-                
-                left.innerHTML += `<div style="margin-top:8px; border-top:1px dashed #eee; padding-top:8px;">
-                                    <strong>✈️ 여행 테마 상세 점수:</strong>
-                                    <div class="muted" style="margin-top:4px; font-size:14px; line-height:1.6;">
-                                      ${travelHtml}
-                                    </div>
-                                  </div>`;
-            // [NEW/MODIFIED] 이사 항목 상세 점수 표시 (Q2 반영)
-            } else if (res.category === 'move' && res.recommend && res.recommend.allScores) { 
-                const moveRec = res.recommend;
-                const safeStatus = moveRec.isSafe ? '✅ 안전' : '❌ 흉살방';
-                
-                let moveHtml = '';
-                for (const theme in moveRec.allScores) {
-                    moveHtml += `<strong>${theme}:</strong> ${moveRec.allScores[theme]}점<br>`;
-                }
-
-                left.innerHTML += `<div style="margin-top:8px; border-top:1px dashed #eee; padding-top:8px;">
-                                    <strong>🏠 이사 테마 상세 점수:</strong>
-                                    <div class="muted" style="margin-top:4px; font-size:14px; line-height:1.6;">
-                                      ${moveHtml}
-                                    </div>
-                                  </div>`;
-                left.innerHTML += `<div style="margin-top:8px"><strong>추천 테마:</strong> ${moveRec.bestTheme} (${moveRec.bestScore}점)</div> <div class="muted" style="margin-top:4px;">길방: ${moveRec.safeDirection} (${safeStatus}) · 길함요소: ${moveRec.fortuneElement}</div>`; 
-            }
-            // '인연' 단일 날짜 렌더링
-             else if (res.category === 'match' && res.recommend.region) { 
-                left.innerHTML += `<div style="margin-top:8px"><strong>권장 지역/방위:</strong> ${res.recommend.region}</div>
-                                     <div class="muted" style="margin-top:4px;"><strong>권장 직업/활동:</strong> ${res.recommend.occupation}</div>
-                                     <div class="muted" style="margin-top:2px; font-size:12px;">(희신 ${res.recommend.favorableOhaeng} 기반)</div>`;
-            }
-        }
-        // 재물 카테고리에 로또 번호 5세트 추가
-        if(res.category === 'wealth' && res.lottoScores) {
-             let lottoHtml = res.lottoScores.lottoNumbers.map((set, index) => 
-                `<div style="font-weight:600; font-size:15px; margin-top:4px; padding:2px 0; border-bottom:1px solid #f0f0f0;">${index+1}. ${set.join(', ')}</div>`
-             ).join('');
-             
-             left.innerHTML += `<div style="margin-top:8px"><strong>복권점수:</strong> 즉석 ${res.lottoScores.instant}점 · 연금 ${res.lottoScores.pension}점 · 로또 ${res.lottoScores.lotto}점</div>`;
-             left.innerHTML += `<div style="margin-top:10px; border-top:1px dashed #eee; padding-top:8px;"><strong>🎯 오늘의 로또 추천 번호 (5세트):</strong>${lottoHtml}</div>`;
-        }
-
-        const right = document.createElement('div'); right.className='right-fixed';
-        const actions = document.createElement('div'); actions.className='actions';
-        const btnSave = document.createElement('button'); btnSave.textContent='저장';
-        btnSave.onclick = ()=>{ if(!localDev){ alert('배포모드 인증 필요'); return; } const a=loadSaved(); a.push({ title:`${catLabel} — ${dateStr}`, summary:`${res.score}점`, items:[{category:catLabel,date:dateStr,weekday:weekday,score:res.score, recommend: res.recommend, strategy: res.strategy, lottoScores: res.lottoScores}], coordinationAdvice: coordinationAdvice, ts:Date.now() }); saveSaved(a); alert('저장 완료'); }; // 코디 정보 저장 추가
-        const btnShare = document.createElement('button'); btnShare.textContent='공유';
-        btnShare.onclick = ()=>{ if(!localDev){ alert('배포모드 인증 필요'); return; } doShareText(buildShareTextForSaved({ title:`${catLabel} — ${dateStr}`, summary:`${res.score}점`, items:[{category:catLabel,date:dateStr,weekday:weekday,score:res.score, recommend: res.recommend, strategy: res.strategy, lottoScores: res.lottoScores}], coordinationAdvice: coordinationAdvice, ts:Date.now() })); }; // 코디 정보 공유 추가
-
-        actions.appendChild(btnSave); actions.appendChild(btnShare);
-        const sb = document.createElement('div'); sb.className='score-box';
-        sb.style.background = res.score>=80? 'var(--high)' : res.score>=65? 'var(--mid)' : res.score>=50? 'var(--low)' : 'var(--def)';
-        sb.textContent = res.score;
-        right.appendChild(sb); right.appendChild(actions);
-        node.appendChild(left); node.appendChild(right);
-        block.appendChild(node);
-    });
-    results.appendChild(block);
-}
-
-// [MODIFIED] renderSingleDayAll 함수 - 코디 정보 계산 추가
-function renderSingleDayAll(dateStr){
-    const results = document.getElementById('results');
-    results.innerHTML = '';
-    const userBirthISO = getBirthDateFromSelectors();
-
-    if (!userBirthISO) { 
-        alert('생년월일 (년/월/일)을 드롭다운에서 모두 선택해야 합니다. 확인 후 다시 시도해 주세요.'); 
-        return; 
-    }
-
-    if (!USER_SAJU_PILLARS) { 
-        displayPillars(); // 만세력 정보 로드 시도
-        if (!USER_SAJU_PILLARS) {
-             alert('사주 정보 로드에 실패했습니다. 생년월일 입력을 확인하십시오.');
-             return;
-        }
-    }
-    
-    try {
-        const dt = parseDateString(dateStr);
-        const weekday = ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()];
-        const dayPillars = calculatePillars(dt, null);
-        const optimalLottoTime = getOptimalLottoTime(dayPillars.day.tg);
-        
-        // [NEW] 행운 코디 조언 계산
-        const coordinationAdvice = generateCoordinationAdvice(USER_SAJU_PILLARS.day.tg, dayPillars);
-        
-        const categories = ['wealth', 'match', 'business', 'travel', 'move'];
-        const resultsArray = categories.map(cat => {
-            const score = scoreForCategory(dayPillars, cat);
-            const extraRec = dayPillars.travelRec || dayPillars.moveRec || dayPillars.businessRec || {};
-            
-            const strategy = getStrategyByScore(USER_SAJU_PILLARS.day.tg, cat, score, dayPillars.moveRec);
-            
-            const item = {
-                category: cat,
-                score: score,
-                strategy: strategy,
-                recommend: dayPillars[`${cat}Rec`] || null, // 기본값
-                lottoScores: cat === 'wealth' ? generateLottoScores(dayPillars, USER_SAJU_PILLARS.day.tg) : null
-            };
-            
-            // '인연' 항목 추천 정보 (희신 기반) 추가
-            if (cat === 'match') {
-                const userDayTG = USER_SAJU_PILLARS.day.tg;
-                const favorableOhaeng = determineFavorableElement(userDayTG);
-                const ohaengRec = getOhaengRecommendation(favorableOhaeng);
-                item.recommend = {
-                    favorableOhaeng: favorableOhaeng,
-                    region: ohaengRec.region,
-                    occupation: ohaengRec.occupation
-                };
-            }
-            
-            delete dayPillars.businessRec; delete dayPillars.travelRec; delete dayPillars.moveRec; // 임시 저장된 추천 정보 정리
-            return item;
-        });
-
-        // [MODIFIED] coordinationAdvice 전달
-        renderDayAllBlock(dateStr, weekday, resultsArray, optimalLottoTime, dayPillars, coordinationAdvice);
-
-    } catch (e) {
-        console.error("단일 날짜 운세 조회 오류:", e);
-        results.innerHTML = `<div style="color:red;font-weight:700;padding:20px;">단일 날짜 운세 조회 중 오류 발생: ${e.message}</div>`;
-    }
-}
-
-
-function findHighestScoringDayOfMonth(year, month, gender) {
-    const key = `${year}-${month}-${gender}`;
-    if(CACHE_HIGHEST_DAY[key]) return CACHE_HIGHEST_DAY[key];
-    const daysInMonth = new Date(year, month, 0).getDate();
-    let bestDay = null;
-    let highestScore = -1;
-    let dayPillars = null;
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const dt = new Date(year, month - 1, day);
-        const pillars = calculatePillars(dt, null);
-        const score = scoreForCategory(pillars, 'wealth'); // 대표 카테고리로 재물 사용
-        if (score > highestScore) {
-            highestScore = score;
-            bestDay = dateStr;
-            dayPillars = pillars;
-        }
-    }
-    const result = { date: bestDay, score: highestScore, pillars: dayPillars };
-    CACHE_HIGHEST_DAY[key] = result;
-    return result;
-}
-
-function monthTopN(year, month, gender, category, N) {
     const daysInMonth = new Date(year, month, 0).getDate();
     const results = [];
-    const userDayTG = USER_SAJU_PILLARS ? USER_SAJU_PILLARS.day.tg : '갑'; 
-
-    for (let day = 1; day <= daysInMonth; day++) {
+    
+    for (let day = 1; day <= daysInMonth; day++) { 
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dt = new Date(year, month - 1, day);
         const weekday = ['일', '월', '화', '수', '목', '금', '토'][dt.getDay()];
-        const dayPillars = calculatePillars(dt, null);
-        const score = scoreForCategory(dayPillars, category);
-        const extraRec = dayPillars.businessRec || dayPillars.travelRec || dayPillars.moveRec || {};
-        const strategy = getStrategyByScore(userDayTG, category, score, dayPillars.moveRec);
+        const hour = userPillars.hour ? parseInt(userPillars.hour.hour.slice(0,2), 10) : null; // 시간 정보 추출 (필요 시 수정)
         
-        const item = {
-            date: dateStr,
-            weekday: weekday,
-            score: score,
-            strategy: strategy,
-            reason: strategy.desc,
-            recommend: dayPillars[`${category}Rec`] || null,
-            lottoScores: category === 'wealth' ? generateLottoScores(dayPillars, userDayTG) : null
-        };
+        const pillars = calculatePillars(dt, hour);
         
-        // '인연' 항목 추천 정보 (희신 기반) 추가
-        if (category === 'match') {
-            const favorableOhaeng = determineFavorableElement(userDayTG);
-            const ohaengRec = getOhaengRecommendation(favorableOhaeng);
-            item.recommend = {
-                favorableOhaeng: favorableOhaeng,
-                region: ohaengRec.region,
-                occupation: ohaengRec.occupation
-            };
-        }
-        
-        delete dayPillars.businessRec; delete dayPillars.travelRec; delete dayPillars.moveRec;
-        results.push(item);
-    }
+        const dayResults = [];
+        ['wealth', 'match', 'business', 'travel', 'move'].forEach(category => {
+            const score = scoreForCategory(pillars, category);
+            const extraRec = (pillars.businessRec || pillars.travelRec || pillars.moveRec) || {};
+            const strategy = getStrategyByScore(USER_SAJU_PILLARS.day.tg, category, score, extraRec);
+            
+            dayResults.push({ category, score, strategy, recommend: extraRec });
+        });
 
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, N);
+        results.push({
+            dateStr,
+            weekday,
+            results: dayResults,
+            dayPillars: pillars,
+            coordinationAdvice: generateCoordinationAdvice(USER_SAJU_PILLARS.day.tg, pillars)
+        });
+    } 
+    return results; 
 }
 
-function calcUserAge(iso, queryYear, queryMonth, queryDay) {
-    const [by, bm, bd] = iso.split('-').map(Number);
-    const age = queryYear - by;
-    // 입춘 기준이 아닌 만 나이 계산 단순화
-    if (queryMonth < bm || (queryMonth === bm && queryDay < bd)) {
-        return age - 1;
-    }
-    return age;
-}
 
-function ageRangeLabel(age) {
-    if (age < 25) return '20대 초중반';
-    if (age < 30) return '20대 후반';
-    if (age < 35) return '30대 초중반';
-    if (age < 40) return '30대 후반';
-    if (age < 50) return '40대';
-    if (age < 60) return '50대';
-    return '60대 이상';
-}
-
-function initBirthSelectors(){
-  const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
-  const now=new Date();
-  for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
-    const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
-  }
-  y.value = now.getFullYear() - 30; 
-  for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
-  for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
-  [y, m, d, document.getElementById('birthhour'), document.getElementById('gender')].forEach(el => {
-    el.addEventListener('change', displayPillars);
-  });
-  setTimeout(displayPillars, 100);
-}
-
-(function initSelectors(){
-  const y=document.getElementById('queryYear'), m=document.getElementById('queryMonth'); const now=new Date();
-  for(let yy=now.getFullYear()-1; yy<=now.getFullYear()+2; yy++){ const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); }
-  for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
-  y.value = now.getFullYear(); m.value = now.getMonth()+1;
-  initBirthSelectors(); 
-})();
-
-// ⭐️ 서버 함수 (유료 운세 계산 + 인증)
+// ----------------------------------------------------------------------
+// ⭐️ 서버리스 함수 진입점: /api/month
+// ----------------------------------------------------------------------
 export default async function handler(request, response) {
-    const { email, code, token, ...birthInfo } = request.body;
-    let client; // DB 연결 객체
+    // 요청 바디에서 필요한 데이터 추출
+    const { birthInfo, email, token, code } = request.body; 
+    let client; // MongoDB 클라이언트 변수
 
-    // 이메일 없이 유료 기능 사용 불가
-    if (!email) {
-         return response.status(401).json({ error: '이메일 정보가 누락되었습니다.' });
-    }
-
+    // 🚨 전체 로직을 try...catch로 감싸서 500 에러 발생 시 디버깅 정보 제공
     try {
-        // 1. DB 연결
-        client = new MongoClient(uri);
-        await client.connect();
-        const collection = client.db("sajuDB").collection("PaidUsers");
+        // 1. MongoDB 연결
+        client = await MongoClient.connect(uri, { /* 옵션 */ });
+        const db = client.db('saju_db'); // 데이터베이스 이름 확인
+        const collection = db.collection('users'); // 컬렉션 이름 확인
+        
+        // 2. 인증 로직
         let user = null;
         let newToken = null;
 
-        // 2. 인증 시도 (토큰 > 코드 순서로 확인)
+        // 기존 토큰으로 확인
         if (token) {
             user = await collection.findOne({ access_token: token, user_email: email });
         }
+        
+        // 토큰이 없거나 만료되어 코드로 재인증 시도
         if (!user && code) {
             // 이메일과 코드가 매칭되는지 확인 (최초 인증)
             user = await collection.findOne({ user_email: email, auth_code: code });
@@ -1050,25 +603,44 @@ export default async function handler(request, response) {
 
         // 3. 🚨 최종 인증 실패
         if (!user) {
-            return response.status(401).json({ error: '인증 실패: 유효한 토큰 또는 코드가 없습니다.' });
+            // DB 연결 닫고 401 반환
+            await client.close();
+            return response.status(401).json({ error: '인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다.' });
         }
         
         // 4. ✅ 인증 성공: 유료 로직 실행
         const dt = new Date(birthInfo.year, birthInfo.month - 1, birthInfo.day);
         const userPillars = calculatePillars(dt, parseInt(birthInfo.hour, 10));
-        const monthResult = monthTopN(userPillars, birthInfo.year, birthInfo.month); 
+        
+        // 🚨 사주 계산 로직이 전역 변수 USER_SAJU_PILLARS에 의존하므로, 여기서 설정합니다.
+        USER_SAJU_PILLARS = userPillars;
+        
+        // 월간 운세 계산 실행
+        const monthResult = monthTopN(userPillars, parseInt(birthInfo.year, 10), parseInt(birthInfo.month, 10)); 
 
-        // 5. 결과 반환 (간단하게 대체)
-        const htmlContent = `<div class="result-card"><h2>[유료] 한 달 전체 추천 결과</h2><p>총 ${monthResult.length}일 분의 추천 결과가 계산되었습니다.</p></div>`;
-
-        response.status(200).json({ 
-            htmlContent: htmlContent,
-            access_token: newToken // 새 토큰이 있다면 함께 보냄
+        // 5. 결과 반환을 위한 HTML 생성 (서버 측 렌더링 함수 사용)
+        const htmlContent = serverRenderMonthResult(monthResult, birthInfo);
+        
+        // DB 연결 닫기
+        await client.close(); 
+        
+        return response.status(200).json({ 
+            htmlContent: htmlContent, 
+            access_token: newToken // 새로운 토큰이 있다면 반환
         });
-
+    
+    // 🚨 catch 블록: 치명적인 서버 오류 발생 시 처리
     } catch (error) {
-        response.status(500).json({ error: '유료 서버 내부 오류 발생', message: error.message });
-    } finally {
-        if (client) client.close(); // DB 연결 종료
+        // DB 클라이언트가 연결된 상태라면 닫아줍니다.
+        if (client) {
+            await client.close();
+        }
+        console.error("month.js 실행 중 치명적인 오류 발생:", error);
+        
+        // 오류 메시지를 클라이언트에게 500 응답으로 보냄
+        return response.status(500).json({ 
+            error: '서버 내부 오류로 계산을 완료할 수 없습니다.', 
+            detail: error.message 
+        });
     }
 }
