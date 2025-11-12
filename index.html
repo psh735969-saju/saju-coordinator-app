@@ -165,6 +165,20 @@ function getBirthInfo() {
 function initBirthSelectors() {
     // 사장님의 기존 초기화 로직을 여기에 다시 붙여넣으세요.
     // (예: document.getElementById('birthYear').value = new Date().getFullYear();)
+
+  const y=document.getElementById('birthYear'), m=document.getElementById('birthMonth'), d=document.getElementById('birthDay');
+  const now=new Date();
+  for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
+    const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
+  }
+  y.value = now.getFullYear() - 30; 
+  for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
+  for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
+  [y, m, d, document.getElementById('birthhour'), document.getElementById('gender')].forEach(el => {
+    el.addEventListener('change', displayPillars);
+  });
+  setTimeout(displayPillars, 100);
+
 }
 (function initSelectors(){ 
     // 사장님의 기존 셀렉터 초기화 로직을 여기에 다시 붙여넣으세요.
