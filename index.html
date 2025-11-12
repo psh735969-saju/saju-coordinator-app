@@ -177,10 +177,10 @@ function initBirthSelectors() {
     const now=new Date();
     y.innerHTML = ''; m.innerHTML = ''; d.innerHTML = ''; 
 
-    for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
-        const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
+    for(let yy=now.getFullYear()-80; yy<=now.getFullYear(); yy++){ 
+        const o=document.createElement('option'); o.value=yy; o.textContent=`${yy}년`; y.appendChild(o); 
     }
-    y.value = now.getFullYear() - 30; // 기본값 설정 
+    y.value = now.getFullYear() - 30; // 기본값 설정 
     
     for(let mm=1; mm<=12; mm++){ const o=document.createElement('option'); o.value=mm; o.textContent=`${mm}월`; m.appendChild(o); }
     for(let dd=1; dd<=31; dd++){ const o=document.createElement('option'); o.value=dd; o.textContent=`${dd}일`; d.appendChild(o); }
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (response.status === 401) {
             localStorage.removeItem('saju_user_token'); 
             alert("🚨 인증 실패: 입력 정보가 잘못되었거나 유료 토큰이 만료되었습니다.");
-            resultsArea.innerHTML = ''; 
+            resultsArea.innerHTML = ''; 
             return;
         }
 
